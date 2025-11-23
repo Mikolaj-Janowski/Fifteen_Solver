@@ -1,3 +1,50 @@
+#!/usr/bin/env python3
+"""
+Fifteen puzzle solver supporting multiple search strategies.
+
+Usage examples:
+  # BFS with successor order DULR
+  python fifteen_solver.py -b DULR < input.txt
+
+  # A* with Manhattan heuristic (id 2)
+  python fifteen_solver.py -a 2 < input.txt
+
+Options (mutually exclusive):
+  -b, --bfs ORDER      Breadth-first search. ORDER is permutation of L,R,U,D or starts with 'R' for random per-node order.
+  -d, --dfs ORDER      Depth-first search. ORDER same semantics.
+  -i, --idfs ORDER     Iterative deepening DFS. ORDER same semantics.
+  -h, --bf H           Best-first (heuristic id)
+  -a, --astar H        A* with heuristic id
+  -s, --sma H          SMA* strategy (textbook-accurate) with heuristic id
+
+Where ORDER is a permutation of 'L','R','U','D' defining successor generation order.
+
+Additional flags:
+  --mem N              (optional) memory bound for SMA* (max nodes in memory) default 20000
+  --maxdepth N         (optional) maximum depth for IDDFS (default 80)
+  --view MOVES         View mode: provide a move sequence string to replay using stdin initial state
+
+Input format (from stdin):
+ First line: R C  (rows and columns)
+ Next R lines: C integers each (0 denotes empty)
+
+Output:
+ Two lines: first line is n (length) or -1 if unsolvable/not found. Second line is the sequence of moves (string of L,R,U,D) or empty.
+
+Notes about move semantics:
+ According to the problem statement: letter 'L' denotes a move of a piece having freedom to the left.
+ That means: if a tile can move left into the empty cell, that action is 'L'. In terms of the blank's coordinates (r,c):
+  - If there is a tile at (r, c+1), that tile can move left into the blank -> action 'L'.
+  - If there is a tile at (r, c-1), that tile can move right into the blank -> action 'R'.
+  - If there is a tile at (r+1, c), that tile can move up into the blank -> action 'U'.
+  - If there is a tile at (r-1, c), that tile can move down into the blank -> action 'D'.
+
+This file implements BFS, DFS, IDDFS, Best-first (greedy), A*, and a textbook-accurate SMA* with full backing-up of f-values.
+Heuristics: 0 -> zero, 1 -> misplaced tiles, 2 -> Manhattan distance.
+
+This implementation is intended for educational use and to satisfy the assignment requirements.
+"""
+
 import sys
 import argparse
 from collections import deque
@@ -7,13 +54,46 @@ import math
 
 # ----------------------------- Puzzle utilities -----------------------------
 
-def read_input(stream=sys.stdin):
-    data = stream.read().strip().split()
+# Cache entire stdin at program start so multiple reads are possible (fixes double-read issues on Windows redirection)
+RAW_STDIN_CONTENT = None
+try:
+    # If stdin is not a tty, attempt to read and cache it. This prevents accidental multiple reads consuming input.
+    if not sys.stdin.isatty():
+        try:
+            RAW_STDIN_CONTENT = sys.stdin.buffer.read().decode('utf-8')
+        except Exception:
+            try:
+                RAW_STDIN_CONTENT = sys.stdin.read()
+            except Exception:
+                RAW_STDIN_CONTENT = None
+except Exception:
+    RAW_STDIN_CONTENT = None
+
+
+def read_input(stream=None):
+    """
+    Read R C and R*C integers from the provided stream or from cached stdin content when available.
+    Returns (R, C, tuple(board)). Raises SystemExit("No input provided") when input missing.
+    """
+    data = None
+    if RAW_STDIN_CONTENT is not None:
+        data = RAW_STDIN_CONTENT.strip().split()
+    else:
+        if stream is None:
+            stream = sys.stdin
+        text = stream.read()
+        if text is None:
+            data = []
+        else:
+            data = text.strip().split()
     if not data:
         raise SystemExit("No input provided")
     it = iter(data)
-    R = int(next(it))
-    C = int(next(it))
+    try:
+        R = int(next(it))
+        C = int(next(it))
+    except StopIteration:
+        raise SystemExit("Not enough header values (R C)")
     board = []
     for _ in range(R * C):
         try:
@@ -21,15 +101,6 @@ def read_input(stream=sys.stdin):
         except StopIteration:
             raise SystemExit("Not enough board entries")
     return R, C, tuple(board)
-R, C, start = read_input()
-
-print("DEBUG: R={}, C={}".format(R, C))
-print("DEBUG: start board:")
-
-# Print as 2D grid
-for r in range(R):
-    row = start[r*C:(r+1)*C]  # slice for each row
-    print(list(row))
 
 
 def goal_state(R, C):
@@ -151,7 +222,10 @@ def is_solvable(state, R, C):
         bidx = state.index(0)
         br = bidx // C
         blank_row_from_bottom = R - br
-        return (inv + blank_row_from_bottom) % 2 == 0
+        # For even grid width: puzzle is solvable if the parity of inversions
+        # is different from the parity of the blank row from the bottom.
+        # (i.e., inv%2 != blank_row_from_bottom%2)
+        return (inv % 2) != (blank_row_from_bottom % 2)
 
 # ----------------------------- Search algorithms --------------------------
 
@@ -568,8 +642,35 @@ def main():
 
     # If --check was given, print solvability and exit
     if args.check:
+        # compute detailed diagnostics for solvability
+        arr = [x for x in start if x != 0]
+        inv = 0
+        for i in range(len(arr)):
+            ai = arr[i]
+            for j in range(i+1, len(arr)):
+                if ai > arr[j]:
+                    inv += 1
+        bidx = start.index(0)
+        br = bidx // C
+        blank_row_from_bottom = R - br
+        width_even = (C % 2 == 0)
         solv = is_solvable(start, R, C)
+        # print compact machine-readable result to stdout (0/1) for scripts
         print('1' if solv else '0')
+        # print human-readable diagnostics to stderr so it doesn't break automated parsers
+        print('--- Solvability diagnostic ---', file=sys.stderr)
+        print(f'Inversions (excluding blank): {inv}', file=sys.stderr)
+        print(f'Blank row from top (0-based): {br}', file=sys.stderr)
+        print(f'Blank row from bottom (1-based): {blank_row_from_bottom}', file=sys.stderr)
+        print(f'Board width even? {width_even}', file=sys.stderr)
+        print(f'Inversion parity (even?): {inv % 2 == 0}', file=sys.stderr)
+        if width_even:
+            print('Rule: For even grid width, puzzle is solvable if (inversions + blank_row_from_bottom) is even.', file=sys.stderr)
+            print(f'(inversions + blank_row_from_bottom) = {inv} + {blank_row_from_bottom} = {inv + blank_row_from_bottom}', file=sys.stderr)
+        else:
+            print('Rule: For odd grid width, puzzle is solvable if inversion count is even.', file=sys.stderr)
+        print(f'Result: {"SOLVABLE" if solv else "UNSOLVABLE"}', file=sys.stderr)
+        print('--- End diagnostic ---', file=sys.stderr)
         return
 
     # If --view given, run viewer and exit (no algorithm needed)

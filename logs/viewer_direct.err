@@ -1,5 +1,9 @@
-usage: fifteen_solver.py [-h]
-                         (-b ORDER | -d ORDER | -i ORDER | -g H | -a H | -s H)
-                         [--order ORDER] [--mem N] [--maxdepth N]
-                         [--view MOVES]
-fifteen_solver.py: error: one of the arguments -b/--bfs -d/--dfs -i/--idfs -g/--bf -a/--astar -s/--sma is required
+Traceback (most recent call last):
+  File "E:\Tasks\AI\Task 3\fifteen_solver.py", line 773, in <module>
+    main()
+  File "E:\Tasks\AI\Task 3\fifteen_solver.py", line 687, in main
+    view_solution(start, R, C, moves)
+  File "E:\Tasks\AI\Task 3\fifteen_solver.py", line 601, in view_solution
+    state[pos], state[j] = state[j], state[pos]
+                           ~~~~~^^^
+IndexError: list index out of range
