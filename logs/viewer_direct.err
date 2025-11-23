@@ -1,0 +1,5 @@
+usage: fifteen_solver.py [-h]
+                         (-b ORDER | -d ORDER | -i ORDER | -g H | -a H | -s H)
+                         [--order ORDER] [--mem N] [--maxdepth N]
+                         [--view MOVES]
+fifteen_solver.py: error: one of the arguments -b/--bfs -d/--dfs -i/--idfs -g/--bf -a/--astar -s/--sma is required
