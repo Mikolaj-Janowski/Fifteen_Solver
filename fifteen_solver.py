@@ -345,18 +345,7 @@ class SMAStarNode:
         self.id = id(self)
 
 
-def sma_star(start, R, C, order_spec, goal, hfun, max_nodes=20000):
-    """
-    Textbook-accurate SMA* (simplified but with correct backing-up of f-values):
-    - OPEN contains frontier nodes (nodes without expanded children)
-    - Expand the best frontier node (lowest f). When memory limit exceeded, prune the worst frontier node
-      (highest f, and if tie, greatest depth). When pruning, back up f-values to parent and propagate.
-    - Handle duplicate states by keeping only the best path currently in memory (if a better path is found,
-      we remove the old subtree and insert the new path).
-
-    This implementation is faithful to SMA* described in standard AI textbooks and suitable for
-    assignments/demonstrations. It is not extremely optimized for very large memory bounds but is correct.
-    """
+def sma_star(start, R, C, order_spec, goal, hfun, max_nodes=2000):
     if start == goal:
         return ''
 
@@ -582,7 +571,7 @@ def main():
     group.add_argument('-a', '--astar', metavar='H', type=int, help="A* (heuristic id)")
     group.add_argument('-s', '--sma', metavar='H', type=int, help="SMA* (heuristic id)")
     parser.add_argument('--order', metavar='ORDER', help='Optional successor order for informed searches')
-    parser.add_argument('--mem', metavar='N', type=int, help='Memory bound for SMA* (default 20000)')
+    parser.add_argument('--mem', metavar='N', type=int, help='Memory bound for SMA* (default 2000)')
     parser.add_argument('--maxdepth', metavar='N', type=int, help='Max depth for IDDFS (default 80)')
     parser.add_argument('--view', metavar='MOVES', help='Viewer: replay a moves string from input initial state')
     args = parser.parse_args()
