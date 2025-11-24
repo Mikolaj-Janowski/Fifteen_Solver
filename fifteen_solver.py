@@ -1,50 +1,3 @@
-#!/usr/bin/env python3
-"""
-Fifteen puzzle solver supporting multiple search strategies.
-
-Usage examples:
-  # BFS with successor order DULR
-  python fifteen_solver.py -b DULR < input.txt
-
-  # A* with Manhattan heuristic (id 2)
-  python fifteen_solver.py -a 2 < input.txt
-
-Options (mutually exclusive):
-  -b, --bfs ORDER      Breadth-first search. ORDER is permutation of L,R,U,D or starts with 'R' for random per-node order.
-  -d, --dfs ORDER      Depth-first search. ORDER same semantics.
-  -i, --idfs ORDER     Iterative deepening DFS. ORDER same semantics.
-  -h, --bf H           Best-first (heuristic id)
-  -a, --astar H        A* with heuristic id
-  -s, --sma H          SMA* strategy (textbook-accurate) with heuristic id
-
-Where ORDER is a permutation of 'L','R','U','D' defining successor generation order.
-
-Additional flags:
-  --mem N              (optional) memory bound for SMA* (max nodes in memory) default 20000
-  --maxdepth N         (optional) maximum depth for IDDFS (default 80)
-  --view MOVES         View mode: provide a move sequence string to replay using stdin initial state
-
-Input format (from stdin):
- First line: R C  (rows and columns)
- Next R lines: C integers each (0 denotes empty)
-
-Output:
- Two lines: first line is n (length) or -1 if unsolvable/not found. Second line is the sequence of moves (string of L,R,U,D) or empty.
-
-Notes about move semantics:
- According to the problem statement: letter 'L' denotes a move of a piece having freedom to the left.
- That means: if a tile can move left into the empty cell, that action is 'L'. In terms of the blank's coordinates (r,c):
-  - If there is a tile at (r, c+1), that tile can move left into the blank -> action 'L'.
-  - If there is a tile at (r, c-1), that tile can move right into the blank -> action 'R'.
-  - If there is a tile at (r+1, c), that tile can move up into the blank -> action 'U'.
-  - If there is a tile at (r-1, c), that tile can move down into the blank -> action 'D'.
-
-This file implements BFS, DFS, IDDFS, Best-first (greedy), A*, and a textbook-accurate SMA* with full backing-up of f-values.
-Heuristics: 0 -> zero, 1 -> misplaced tiles, 2 -> Manhattan distance.
-
-This implementation is intended for educational use and to satisfy the assignment requirements.
-"""
-
 import sys
 import argparse
 from collections import deque
@@ -392,18 +345,7 @@ class SMAStarNode:
         self.id = id(self)
 
 
-def sma_star(start, R, C, order_spec, goal, hfun, max_nodes=20000):
-    """
-    Textbook-accurate SMA* (simplified but with correct backing-up of f-values):
-    - OPEN contains frontier nodes (nodes without expanded children)
-    - Expand the best frontier node (lowest f). When memory limit exceeded, prune the worst frontier node
-      (highest f, and if tie, greatest depth). When pruning, back up f-values to parent and propagate.
-    - Handle duplicate states by keeping only the best path currently in memory (if a better path is found,
-      we remove the old subtree and insert the new path).
-
-    This implementation is faithful to SMA* described in standard AI textbooks and suitable for
-    assignments/demonstrations. It is not extremely optimized for very large memory bounds but is correct.
-    """
+def sma_star(start, R, C, order_spec, goal, hfun, max_nodes=2000):
     if start == goal:
         return ''
 
@@ -629,7 +571,7 @@ def main():
     group.add_argument('-a', '--astar', metavar='H', type=int, help="A* (heuristic id)")
     group.add_argument('-s', '--sma', metavar='H', type=int, help="SMA* (heuristic id)")
     parser.add_argument('--order', metavar='ORDER', help='Optional successor order for informed searches')
-    parser.add_argument('--mem', metavar='N', type=int, help='Memory bound for SMA* (default 20000)')
+    parser.add_argument('--mem', metavar='N', type=int, help='Memory bound for SMA* (default 2000)')
     parser.add_argument('--maxdepth', metavar='N', type=int, help='Max depth for IDDFS (default 80)')
     parser.add_argument('--view', metavar='MOVES', help='Viewer: replay a moves string from input initial state')
     args = parser.parse_args()
